@@ -33,43 +33,38 @@ public class UpdateBenchmark {
     private DefaultEasyEntityQuery easyEntityQuery;
     private DSLContext jooqDsl;
     private EntityManager entityManager;
-    private String testUserId;
+    private String[] testUserIds;
+    private int userIdIndex = 0;
 
     @Setup(Level.Trial)
     public void setup() {
         DatabaseInitializer.getDataSource();
         DatabaseInitializer.clearData();
 
-        // 初始化 easy-query
         EasyQueryClient easyQueryClient = EasyQueryBootstrapper.defaultBuilderConfiguration()
                 .setDefaultDataSource(DatabaseInitializer.getDataSource())
                 .useDatabaseConfigure(new H2DatabaseConfiguration())
                 .build();
         easyEntityQuery = new DefaultEasyEntityQuery(easyQueryClient);
 
-        // 初始化 JOOQ
         jooqDsl = DSL.using(DatabaseInitializer.getDataSource(), SQLDialect.H2);
 
-        // 初始化 Hibernate
         entityManager = HibernateUtil.createEntityManager();
 
-        // 插入测试数据
         insertTestData();
     }
 
     @Setup(Level.Iteration)
     public void setupIteration() {
-        // 清理 Hibernate 一级缓存，避免缓存累积影响更新性能
-        if (entityManager != null) {
-            entityManager.clear();
-        }
+        userIdIndex = 0;
     }
 
     private void insertTestData() {
+        testUserIds = new String[50];
         for (int i = 0; i < 100; i++) {
             String id = UUID.randomUUID().toString();
-            if (i == 50) {
-                testUserId = id;
+            if (i >= 25 && i < 75) {
+                testUserIds[i - 25] = id;
             }
             DatabaseInitializer.insertUserWithJdbc(id, "user_" + i, "user" + i + "@example.com", 20 + i, "1234567890", "Address " + i);
         }
@@ -77,12 +72,13 @@ public class UpdateBenchmark {
 
     @Benchmark
     public long easyQueryUpdateById() {
+        String userId = testUserIds[(userIdIndex++) % testUserIds.length];
         try (Transaction transaction = easyEntityQuery.beginTransaction()) {
             long result = easyEntityQuery.updatable(User.class)
                     .setColumns(u -> {
                         u.age().set(99);
                     })
-                    .where(u -> u.id().eq(testUserId))
+                    .where(u -> u.id().eq(userId))
                     .executeRows();
             transaction.commit();
             return result;
@@ -91,11 +87,12 @@ public class UpdateBenchmark {
 
     @Benchmark
     public int jooqUpdateById() {
+        String userId = testUserIds[(userIdIndex++) % testUserIds.length];
         return jooqDsl.transactionResult(configuration -> {
             return DSL.using(configuration)
                     .update(T_USER)
                     .set(T_USER.AGE, 99)
-                    .where(T_USER.ID.eq(testUserId))
+                    .where(T_USER.ID.eq(userId))
                     .execute();
         });
     }
@@ -127,11 +124,12 @@ public class UpdateBenchmark {
 
     @Benchmark
     public int hibernateUpdateById() {
+        String userId = testUserIds[(userIdIndex++) % testUserIds.length];
         entityManager.getTransaction().begin();
         try {
             Query query = entityManager.createQuery("UPDATE HibernateUser u SET u.age = :age WHERE u.id = :id");
             query.setParameter("age", 99);
-            query.setParameter("id", testUserId);
+            query.setParameter("id", userId);
             int result = query.executeUpdate();
             entityManager.getTransaction().commit();
             return result;

@@ -45,19 +45,13 @@ public class InsertBenchmark {
                 .build();
         easyEntityQuery = new DefaultEasyEntityQuery(easyQueryClient);
 
-        // 初始化 JOOQ
         jooqDsl = DSL.using(DatabaseInitializer.getDataSource(), SQLDialect.H2);
 
-        // 初始化 Hibernate
         entityManager = HibernateUtil.createEntityManager();
     }
 
     @Setup(Level.Iteration)
     public void setupIteration() {
-        // 清理 Hibernate 缓存，避免一级缓存累积影响性能
-        if (entityManager != null) {
-            entityManager.clear();
-        }
         DatabaseInitializer.clearData();
     }
 
@@ -148,14 +142,9 @@ public class InsertBenchmark {
                 String id = UUID.randomUUID().toString();
                 HibernateUser user = new HibernateUser(id, "user_" + id, "user@example.com", 25 + (i % 50), "1234567890", "Test Address");
                 entityManager.persist(user);
-                
-                // 与 batch_size 配合，定期 flush 和 clear，避免内存积累
-                if (i > 0 && i % 50 == 0) {
-                    entityManager.flush();
-                    entityManager.clear();
-                }
             }
-            entityManager.flush(); // 最后再 flush 一次
+            entityManager.flush();
+            entityManager.clear();
             entityManager.getTransaction().commit();
         } catch (Exception e) {
             if (entityManager.getTransaction().isActive()) {

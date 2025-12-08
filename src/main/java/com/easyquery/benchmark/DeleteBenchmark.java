@@ -37,28 +37,20 @@ public class DeleteBenchmark {
     public void setup() {
         DatabaseInitializer.getDataSource();
 
-        // 初始化 easy-query
         EasyQueryClient easyQueryClient = EasyQueryBootstrapper.defaultBuilderConfiguration()
                 .setDefaultDataSource(DatabaseInitializer.getDataSource())
                 .useDatabaseConfigure(new H2DatabaseConfiguration())
                 .build();
         easyEntityQuery = new DefaultEasyEntityQuery(easyQueryClient);
 
-        // 初始化 JOOQ
         jooqDsl = DSL.using(DatabaseInitializer.getDataSource(), SQLDialect.H2);
 
-        // 初始化 Hibernate
         entityManager = HibernateUtil.createEntityManager();
     }
 
     @Setup(Level.Iteration)
     public void setupIteration() {
-        // 清理 Hibernate 一级缓存，避免缓存累积影响删除性能
-        if (entityManager != null) {
-            entityManager.clear();
-        }
         DatabaseInitializer.clearData();
-        // 使用中立的 JDBC 方式插入新数据（确保公平性）
         for (int i = 0; i < 50; i++) {
             String id = UUID.randomUUID().toString();
             DatabaseInitializer.insertUserWithJdbc(id, "user_" + i, "user" + i + "@example.com", 20 + i, "1234567890", "Address " + i);

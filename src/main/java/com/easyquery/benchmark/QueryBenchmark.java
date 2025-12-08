@@ -34,44 +34,38 @@ public class QueryBenchmark {
     private DefaultEasyEntityQuery easyEntityQuery;
     private DSLContext jooqDsl;
     private EntityManager entityManager;
-    private String testUserId;
+    private String[] testUserIds;
+    private int userIdIndex = 0;
 
     @Setup(Level.Trial)
     public void setup() {
-        // 初始化数据库
         DatabaseInitializer.getDataSource();
         DatabaseInitializer.clearData();
 
-        // 初始化 easy-query
         EasyQueryClient easyQueryClient = EasyQueryBootstrapper.defaultBuilderConfiguration()
                 .setDefaultDataSource(DatabaseInitializer.getDataSource())
                 .useDatabaseConfigure(new H2DatabaseConfiguration())
                 .build();
         easyEntityQuery = new DefaultEasyEntityQuery(easyQueryClient);
 
-        // 初始化 JOOQ
         jooqDsl = DSL.using(DatabaseInitializer.getDataSource(), SQLDialect.H2);
 
-        // 初始化 Hibernate
         entityManager = HibernateUtil.createEntityManager();
 
-        // 插入测试数据
         insertTestData();
     }
 
     @Setup(Level.Iteration)
     public void setupIteration() {
-        // 清理 Hibernate 一级缓存，避免缓存累积影响查询性能
-        if (entityManager != null) {
-            entityManager.clear();
-        }
+        userIdIndex = 0;
     }
 
     private void insertTestData() {
+        testUserIds = new String[100];
         for (int i = 0; i < 1000; i++) {
             String id = UUID.randomUUID().toString();
-            if (i == 500) {
-                testUserId = id;
+            if (i >= 400 && i < 500) {
+                testUserIds[i - 400] = id;
             }
             DatabaseInitializer.insertUserWithJdbc(id, "user_" + i, "user" + i + "@example.com", 20 + (i % 50), "1234567890", "Address " + i);
         }
@@ -79,15 +73,17 @@ public class QueryBenchmark {
 
     @Benchmark
     public User easyQuerySelectById() {
+        String userId = testUserIds[(userIdIndex++) % testUserIds.length];
         return easyEntityQuery.queryable(User.class)
-                .where(u -> u.id().eq(testUserId))
+                .where(u -> u.id().eq(userId))
                 .firstOrNull();
     }
 
     @Benchmark
     public TUser jooqSelectById() {
+        String userId = testUserIds[(userIdIndex++) % testUserIds.length];
         return jooqDsl.selectFrom(T_USER)
-                .where(T_USER.ID.eq(testUserId))
+                .where(T_USER.ID.eq(userId))
                 .fetchOneInto(TUser.class);
     }
 
@@ -129,7 +125,8 @@ public class QueryBenchmark {
 
     @Benchmark
     public HibernateUser hibernateSelectById() {
-        return entityManager.find(HibernateUser.class, testUserId);
+        String userId = testUserIds[(userIdIndex++) % testUserIds.length];
+        return entityManager.find(HibernateUser.class, userId);
     }
 
     @Benchmark

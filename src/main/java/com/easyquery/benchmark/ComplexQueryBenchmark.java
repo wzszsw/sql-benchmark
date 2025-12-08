@@ -44,29 +44,21 @@ ComplexQueryBenchmark {
         DatabaseInitializer.getDataSource();
         DatabaseInitializer.clearData();
 
-        // 初始化 easy-query
         EasyQueryClient easyQueryClient = EasyQueryBootstrapper.defaultBuilderConfiguration()
                 .setDefaultDataSource(DatabaseInitializer.getDataSource())
                 .useDatabaseConfigure(new H2DatabaseConfiguration())
                 .build();
         easyEntityQuery = new DefaultEasyEntityQuery(easyQueryClient);
 
-        // 初始化 JOOQ
         jooqDsl = DSL.using(DatabaseInitializer.getDataSource(), SQLDialect.H2);
 
-        // 初始化 Hibernate
         entityManager = HibernateUtil.createEntityManager();
 
-        // 插入测试数据
         insertTestData();
     }
 
     @Setup(Level.Iteration)
     public void setupIteration() {
-        // 清理 Hibernate 一级缓存，避免缓存累积影响复杂查询性能
-        if (entityManager != null) {
-            entityManager.clear();
-        }
     }
 
     private void insertTestData() {
