@@ -107,12 +107,11 @@ public class QueryBenchmark {
     }
 
     @Benchmark
-    public long jooqCount() {
-        Integer count = jooqDsl.selectCount()
+    public Integer jooqCount() {
+        return jooqDsl.selectCount()
                 .from(table("t_user"))
                 .where(field("age").ge(25).and(field("age").le(35)))
                 .fetchOne(0, Integer.class);
-        return count != null ? count : 0;
     }
 
     @TearDown(Level.Trial)
