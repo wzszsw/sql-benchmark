@@ -58,6 +58,10 @@ public class QueryBenchmark {
     @Setup(Level.Iteration)
     public void setupIteration() {
         userIdIndex = 0;
+        // Clear Hibernate's first-level cache to ensure fair comparison
+        if (entityManager != null && entityManager.isOpen()) {
+            entityManager.clear();
+        }
     }
 
     private void insertTestData() {
@@ -126,7 +130,11 @@ public class QueryBenchmark {
     @Benchmark
     public HibernateUser hibernateSelectById() {
         String userId = testUserIds[(userIdIndex++) % testUserIds.length];
-        return entityManager.find(HibernateUser.class, userId);
+        // Use native query instead of find() to avoid first-level cache advantage
+        return (HibernateUser) entityManager.createNativeQuery(
+                "SELECT * FROM t_user WHERE id = ?", HibernateUser.class)
+                .setParameter(1, userId)
+                .getSingleResult();
     }
 
     @Benchmark
