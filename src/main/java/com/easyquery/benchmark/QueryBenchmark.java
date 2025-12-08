@@ -2,12 +2,15 @@ package com.easyquery.benchmark;
 
 import com.easyquery.benchmark.entity.User;
 import com.easyquery.benchmark.jooq.JooqUser;
+import com.easyquery.benchmark.hibernate.HibernateUser;
+import com.easyquery.benchmark.hibernate.HibernateUtil;
 import com.easy.query.api.proxy.client.DefaultEasyEntityQuery;
 import com.easy.query.core.api.client.EasyQueryClient;
 import com.easy.query.core.bootstrapper.EasyQueryBootstrapper;
 import com.easy.query.h2.config.H2DatabaseConfiguration;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
 import org.jooq.DSLContext;
-import org.jooq.Record;
 import org.jooq.SQLDialect;
 import org.jooq.impl.DSL;
 import org.openjdk.jmh.annotations.*;
@@ -22,14 +25,15 @@ import static org.jooq.impl.DSL.*;
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)
 @State(Scope.Benchmark)
-@Warmup(iterations = 3, time = 1)
-@Measurement(iterations = 5, time = 2)
-@Fork(1)
+@Warmup(iterations = 5, time = 3)
+@Measurement(iterations = 10, time = 3)
+@Fork(3)
 @Threads(1)
 public class QueryBenchmark {
 
     private DefaultEasyEntityQuery easyEntityQuery;
     private DSLContext jooqDsl;
+    private EntityManager entityManager;
     private String testUserId;
 
     @Setup(Level.Trial)
@@ -47,6 +51,9 @@ public class QueryBenchmark {
 
         // 初始化 JOOQ
         jooqDsl = DSL.using(DatabaseInitializer.getDataSource(), SQLDialect.H2);
+
+        // 初始化 Hibernate
+        entityManager = HibernateUtil.createEntityManager();
 
         // 插入测试数据
         insertTestData();
@@ -114,8 +121,36 @@ public class QueryBenchmark {
                 .fetchOne(0, Integer.class);
     }
 
+    @Benchmark
+    public HibernateUser hibernateSelectById() {
+        return entityManager.find(HibernateUser.class, testUserId);
+    }
+
+    @Benchmark
+    public List<HibernateUser> hibernateSelectList() {
+        TypedQuery<HibernateUser> query = entityManager.createQuery(
+                "SELECT u FROM HibernateUser u WHERE u.age >= :age ORDER BY u.username DESC",
+                HibernateUser.class);
+        query.setParameter("age", 25);
+        query.setMaxResults(10);
+        return query.getResultList();
+    }
+
+    @Benchmark
+    public long hibernateCount() {
+        TypedQuery<Long> query = entityManager.createQuery(
+                "SELECT COUNT(u) FROM HibernateUser u WHERE u.age >= :minAge AND u.age <= :maxAge",
+                Long.class);
+        query.setParameter("minAge", 25);
+        query.setParameter("maxAge", 35);
+        return query.getSingleResult();
+    }
+
     @TearDown(Level.Trial)
     public void tearDown() {
+        if (entityManager != null && entityManager.isOpen()) {
+            entityManager.close();
+        }
         DatabaseInitializer.clearData();
     }
 }

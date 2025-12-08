@@ -23,6 +23,7 @@
         <!-- Dependency Versions -->
         <easy-query.version>3.1.66-preview3</easy-query.version>
         <jooq.version>3.19.1</jooq.version>
+        <hibernate.version>6.4.1.Final</hibernate.version>
         <h2.version>2.2.224</h2.version>
         <jmh.version>1.37</jmh.version>
         <hikaricp.version>4.0.3</hikaricp.version>
@@ -52,6 +53,18 @@
             <groupId>org.jooq</groupId>
             <artifactId>jooq</artifactId>
             <version>${jooq.version}</version>
+        </dependency>
+
+        <!-- Hibernate dependencies -->
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-core</artifactId>
+            <version>${hibernate.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-hikaricp</artifactId>
+            <version>${hibernate.version}</version>
         </dependency>
 
         <!-- H2 Database -->

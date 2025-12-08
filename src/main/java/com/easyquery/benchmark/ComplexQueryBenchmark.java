@@ -2,10 +2,14 @@ package com.easyquery.benchmark;
 
 import com.easyquery.benchmark.entity.Order;
 import com.easyquery.benchmark.entity.User;
+import com.easyquery.benchmark.hibernate.HibernateUser;
+import com.easyquery.benchmark.hibernate.HibernateUtil;
 import com.easy.query.api.proxy.client.DefaultEasyEntityQuery;
 import com.easy.query.core.api.client.EasyQueryClient;
 import com.easy.query.core.bootstrapper.EasyQueryBootstrapper;
 import com.easy.query.h2.config.H2DatabaseConfiguration;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
 import org.jooq.DSLContext;
 import org.jooq.SQLDialect;
 import org.jooq.impl.DSL;
@@ -22,15 +26,16 @@ import static org.jooq.impl.DSL.*;
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)
 @State(Scope.Benchmark)
-@Warmup(iterations = 3, time = 1)
-@Measurement(iterations = 5, time = 2)
-@Fork(1)
+@Warmup(iterations = 5, time = 3)
+@Measurement(iterations = 10, time = 3)
+@Fork(3)
 @Threads(1)
 public class
 ComplexQueryBenchmark {
 
     private DefaultEasyEntityQuery easyEntityQuery;
     private DSLContext jooqDsl;
+    private EntityManager entityManager;
 
     @Setup(Level.Trial)
     public void setup() {
@@ -46,6 +51,9 @@ ComplexQueryBenchmark {
 
         // 初始化 JOOQ
         jooqDsl = DSL.using(DatabaseInitializer.getDataSource(), SQLDialect.H2);
+
+        // 初始化 Hibernate
+        entityManager = HibernateUtil.createEntityManager();
 
         // 插入测试数据
         insertTestData();
@@ -118,8 +126,33 @@ ComplexQueryBenchmark {
         return count != null ? count : 0;
     }
 
+    @Benchmark
+    public List<HibernateUser> hibernateJoinQuery() {
+        TypedQuery<HibernateUser> query = entityManager.createQuery(
+                "SELECT DISTINCT u FROM HibernateUser u " +
+                "JOIN HibernateOrder o ON u.id = o.userId " +
+                "WHERE o.status = :status AND o.amount >= :minAmount",
+                HibernateUser.class);
+        query.setParameter("status", 1);
+        query.setParameter("minAmount", new BigDecimal("100"));
+        query.setMaxResults(20);
+        return query.getResultList();
+    }
+
+    @Benchmark
+    public long hibernateAggregation() {
+        TypedQuery<Long> query = entityManager.createQuery(
+                "SELECT COUNT(o) FROM HibernateOrder o WHERE o.status = :status",
+                Long.class);
+        query.setParameter("status", 1);
+        return query.getSingleResult();
+    }
+
     @TearDown(Level.Trial)
     public void tearDown() {
+        if (entityManager != null && entityManager.isOpen()) {
+            entityManager.close();
+        }
         DatabaseInitializer.clearData();
     }
 }

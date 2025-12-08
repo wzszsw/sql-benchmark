@@ -2,7 +2,7 @@
 REM Easy-Query Benchmark Runner Script for Windows
 
 echo ======================================
-echo Easy-Query vs JOOQ Benchmark Suite
+echo       Easy-Query Benchmark Suite
 echo ======================================
 echo.
 

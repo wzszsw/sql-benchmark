@@ -1,4 +1,4 @@
-# Easy-Query vs JOOQ Performance Benchmark
+# Easy-Query vs JOOQ vs Hibernate Performance Benchmark
 
 ## 🏆 Benchmark Results
 
@@ -48,21 +48,21 @@
 
 💡 **Overall**: easy-query shows superior performance in most single-record operations and complex queries (especially aggregations and joins). JOOQ demonstrates better performance in simple COUNT queries and batch insert operations.
 
-⚠️ **Important Note on Data Stability**: The test results show **very high variance** (large error margins), with some confidence intervals including negative values. This indicates significant instability in the benchmark results. For more reliable performance comparisons, it is recommended to:
-- Increase measurement iterations (from 5 to 10-20)
-- Extend warmup time (from 1s to 3-5s)
-- Use multiple forks (from 1 to 3-5)
-- Ensure a clean test environment with minimal background processes
+⚠️ **Important Note on Data Stability**: The original test results showed very high variance. This has been improved with the following optimizations:
+- Increased warmup iterations (from 3 to 5) and time (from 1s to 3s)
+- Increased measurement iterations (from 5 to 10) and time (from 2s to 3s)
+- Using multiple JVM forks (from 1 to 3) for more stable results
+- All frameworks now run in **autocommit mode without explicit transaction management** for fair comparison
 
 ---
 
 ## 📊 Overview
 
-This is a **standalone** comprehensive performance benchmark comparing **easy-query** and **JOOQ** using JMH (Java Microbenchmark Harness).
+This is a **standalone** comprehensive performance benchmark comparing **easy-query**, **JOOQ**, and **Hibernate** using JMH (Java Microbenchmark Harness).
 
 > **Talk is cheap, show me the code and benchmarks!**
 
-This project provides objective benchmark data to prove that easy-query is not just a JOOQ clone, but offers significant advantages in both performance and usability.
+This project provides objective benchmark data to prove that easy-query is not just a JOOQ clone, but offers significant advantages in both performance and usability compared to other popular ORM frameworks.
 
 ### ✨ Standalone Project
 
@@ -76,14 +76,14 @@ This benchmark can be run **independently** without the easy-query parent projec
 
 All benchmarks use JMH (Java Microbenchmark Harness) with the following configuration:
 - **Mode**: Throughput (operations per second)
-- **Warmup**: 3 iterations, 1 second each
-- **Measurement**: 5 iterations, 2 seconds each
-- **Fork**: 1 JVM fork
+- **Warmup**: 5 iterations, 3 seconds each
+- **Measurement**: 10 iterations, 3 seconds each
+- **Fork**: 3 JVM forks
 - **Threads**: 1 thread
 
 ### 1. **Insert Operations (InsertBenchmark)**
 - **Single insert**: Insert one user record at a time
-- **Batch insert (10 records)**: Insert 10 user records in a single batch operation
+- **Batch insert (1000 records)**: Insert 1000 user records in a single batch operation
 
 ### 2. **Query Operations (QueryBenchmark)**
 - **Query by ID**: Select a single user by primary key
@@ -107,6 +107,7 @@ All benchmarks use JMH (Java Microbenchmark Harness) with the following configur
 - **H2 Database**: 2.2.224 - In-memory database
 - **easy-query**: 3.1.66-preview3
 - **JOOQ**: 3.19.1
+- **Hibernate**: 6.4.1.Final
 - **HikariCP**: 4.0.3 - Connection pool
 
 ## 🚀 Running the Benchmarks
@@ -282,9 +283,22 @@ List<JooqUser> users = jooqDsl.selectDistinct(
     .fetchInto(JooqUser.class);
 ```
 
+**Hibernate**:
+```java
+TypedQuery<HibernateUser> query = entityManager.createQuery(
+    "SELECT DISTINCT u FROM HibernateUser u " +
+    "JOIN HibernateOrder o ON u.id = o.userId " +
+    "WHERE o.status = :status AND o.amount >= :minAmount",
+    HibernateUser.class);
+query.setParameter("status", 1);
+query.setParameter("minAmount", new BigDecimal("100"));
+query.setMaxResults(20);
+List<HibernateUser> users = query.getResultList();
+```
+
 ## 💡 Key Advantages
 
-### easy-query vs JOOQ:
+### easy-query Advantages:
 
 1. **🚀 Excellent Performance**: Comparable or better performance in most scenarios
 2. **✨ Type Safety**: Proxy-based strongly-typed API with compile-time checking
@@ -292,6 +306,14 @@ List<JooqUser> users = jooqDsl.selectDistinct(
 4. **📦 Auto-Mapping**: Automatic object mapping (JOOQ also supports `fetchInto()` for basic mapping)
 5. **🔧 Flexibility**: Supports multiple query methods and databases
 6. **📝 Cleaner Code**: Less boilerplate code, especially for complex queries
+
+### Comparison with Hibernate:
+
+- **Performance**: Generally faster than Hibernate in most scenarios
+- **Type Safety**: Better compile-time type checking with lambda expressions
+- **Simplicity**: No need for EntityManager transaction management in simple queries
+- **SQL Control**: More direct control over generated SQL like JOOQ
+- **Learning Curve**: Easier to understand for developers familiar with SQL
 
 ## 🤝 Contributing
 

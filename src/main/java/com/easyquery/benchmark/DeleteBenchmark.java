@@ -1,10 +1,14 @@
 package com.easyquery.benchmark;
 
 import com.easyquery.benchmark.entity.User;
+import com.easyquery.benchmark.hibernate.HibernateUtil;
 import com.easy.query.api.proxy.client.DefaultEasyEntityQuery;
 import com.easy.query.core.api.client.EasyQueryClient;
+import com.easy.query.core.basic.jdbc.tx.Transaction;
 import com.easy.query.core.bootstrapper.EasyQueryBootstrapper;
 import com.easy.query.h2.config.H2DatabaseConfiguration;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import org.jooq.DSLContext;
 import org.jooq.SQLDialect;
 import org.jooq.impl.DSL;
@@ -19,14 +23,15 @@ import static org.jooq.impl.DSL.*;
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)
 @State(Scope.Benchmark)
-@Warmup(iterations = 3, time = 1)
-@Measurement(iterations = 5, time = 2)
-@Fork(1)
+@Warmup(iterations = 5, time = 3)
+@Measurement(iterations = 10, time = 3)
+@Fork(3)
 @Threads(1)
 public class DeleteBenchmark {
 
     private DefaultEasyEntityQuery easyEntityQuery;
     private DSLContext jooqDsl;
+    private EntityManager entityManager;
 
     @Setup(Level.Trial)
     public void setup() {
@@ -41,6 +46,9 @@ public class DeleteBenchmark {
 
         // 初始化 JOOQ
         jooqDsl = DSL.using(DatabaseInitializer.getDataSource(), SQLDialect.H2);
+
+        // 初始化 Hibernate
+        entityManager = HibernateUtil.createEntityManager();
     }
 
     @Setup(Level.Iteration)
@@ -55,21 +63,48 @@ public class DeleteBenchmark {
 
     @Benchmark
     public long easyQueryDeleteByCondition() {
-        return easyEntityQuery.deletable(User.class)
-                .allowDeleteStatement(true)
-                .where(u -> u.age().ge(40))
-                .executeRows();
+        try (Transaction transaction = easyEntityQuery.beginTransaction()) {
+            long result = easyEntityQuery.deletable(User.class)
+                    .allowDeleteStatement(true)
+                    .where(u -> u.age().ge(40))
+                    .executeRows();
+            transaction.commit();
+            return result;
+        }
     }
 
     @Benchmark
     public int jooqDeleteByCondition() {
-        return jooqDsl.deleteFrom(table("t_user"))
-                .where(field("age").ge(40))
-                .execute();
+        return jooqDsl.transactionResult(configuration -> {
+            return DSL.using(configuration)
+                    .deleteFrom(table("t_user"))
+                    .where(field("age").ge(40))
+                    .execute();
+        });
+    }
+
+    @Benchmark
+    public int hibernateDeleteByCondition() {
+        entityManager.getTransaction().begin();
+        try {
+            Query query = entityManager.createQuery("DELETE FROM HibernateUser u WHERE u.age >= :minAge");
+            query.setParameter("minAge", 40);
+            int result = query.executeUpdate();
+            entityManager.getTransaction().commit();
+            return result;
+        } catch (Exception e) {
+            if (entityManager.getTransaction().isActive()) {
+                entityManager.getTransaction().rollback();
+            }
+            throw e;
+        }
     }
 
     @TearDown(Level.Trial)
     public void tearDown() {
+        if (entityManager != null && entityManager.isOpen()) {
+            entityManager.close();
+        }
         DatabaseInitializer.clearData();
     }
 }
