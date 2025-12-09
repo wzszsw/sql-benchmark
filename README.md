@@ -249,9 +249,33 @@ After running the tests, results are saved in the `results/` directory. You can 
 
 ## 🔍 Code Comparison
 
-### Example 1: Simple Query
+### Example 1: Select by ID (⚡ EasyQuery: 311K ops/s - 2.42x faster than Hibernate)
 
-**easy-query**:
+**EasyQuery** - Type-safe with lambda:
+```java
+User user = easyEntityQuery.queryable(User.class)
+    .where(u -> u.id().eq(userId))
+    .firstOrNull();
+```
+
+**JOOQ** - Type-safe with generated tables:
+```java
+TUser user = jooqDsl.selectFrom(T_USER)
+    .where(T_USER.ID.eq(userId))
+    .fetchOneInto(TUser.class);
+```
+
+**Hibernate** - String-based native query:
+```java
+HibernateUser user = (HibernateUser) entityManager.createNativeQuery(
+    "SELECT * FROM t_user WHERE id = ?", HibernateUser.class)
+    .setParameter(1, userId)
+    .getSingleResult();
+```
+
+### Example 2: Select List with Filter and Sort (⚡ EasyQuery: 293K ops/s - 2.65x faster)
+
+**EasyQuery** - Fluent API with lambda expressions:
 ```java
 List<User> users = easyEntityQuery.queryable(User.class)
     .where(u -> u.age().ge(25))
@@ -260,19 +284,28 @@ List<User> users = easyEntityQuery.queryable(User.class)
     .toList();
 ```
 
-**JOOQ**:
+**JOOQ** - SQL-style with generated constants:
 ```java
-List<JooqUser> users = jooqDsl.select()
-    .from(table("t_user"))
-    .where(field("age").ge(25))
-    .orderBy(field("username").desc())
+List<TUser> users = jooqDsl.selectFrom(T_USER)
+    .where(T_USER.AGE.ge(25))
+    .orderBy(T_USER.USERNAME.desc())
     .limit(10)
-    .fetchInto(JooqUser.class);
+    .fetchInto(TUser.class);
 ```
 
-### Example 2: COUNT Query
+**Hibernate** - HQL with string parameters:
+```java
+TypedQuery<HibernateUser> query = entityManager.createQuery(
+    "SELECT u FROM HibernateUser u WHERE u.age >= :age ORDER BY u.username DESC",
+    HibernateUser.class);
+query.setParameter("age", 25);
+query.setMaxResults(10);
+List<HibernateUser> users = query.getResultList();
+```
 
-**easy-query**:
+### Example 3: COUNT Query (⚡ EasyQuery: 430K ops/s)
+
+**EasyQuery** - Clean condition block:
 ```java
 long count = easyEntityQuery.queryable(User.class)
     .where(u -> {
@@ -282,18 +315,27 @@ long count = easyEntityQuery.queryable(User.class)
     .count();
 ```
 
-**JOOQ**:
+**JOOQ** - Chained conditions with null check:
 ```java
 Integer count = jooqDsl.selectCount()
-    .from(table("t_user"))
-    .where(field("age").ge(25).and(field("age").le(35)))
+    .from(T_USER)
+    .where(T_USER.AGE.ge(25).and(T_USER.AGE.le(35)))
     .fetchOne(0, Integer.class);
-long result = count != null ? count : 0;
 ```
 
-### Example 3: JOIN Query
+**Hibernate** - Named parameters:
+```java
+TypedQuery<Long> query = entityManager.createQuery(
+    "SELECT COUNT(u) FROM HibernateUser u WHERE u.age >= :minAge AND u.age <= :maxAge",
+    Long.class);
+query.setParameter("minAge", 25);
+query.setParameter("maxAge", 35);
+long count = query.getSingleResult();
+```
 
-**easy-query**:
+### Example 4: JOIN Query (⚡ EasyQuery: 173K ops/s)
+
+**EasyQuery** - Type-safe JOIN with tuple syntax:
 ```java
 List<User> users = easyEntityQuery.queryable(User.class)
     .innerJoin(Order.class, (u, o) -> u.id().eq(o.userId()))
@@ -306,25 +348,18 @@ List<User> users = easyEntityQuery.queryable(User.class)
     .toList();
 ```
 
-**JOOQ**:
+**JOOQ** - SQL-style with explicit field selection:
 ```java
-List<JooqUser> users = jooqDsl.selectDistinct(
-        field("t_user.id").as("id"),
-        field("t_user.username").as("username"),
-        field("t_user.email").as("email"),
-        field("t_user.age").as("age"),
-        field("t_user.phone").as("phone"),
-        field("t_user.address").as("address")
-    )
-    .from(table("t_user"))
-    .join(table("t_order")).on(field("t_user.id").eq(field("t_order.user_id")))
-    .where(field("t_order.status").eq(1)
-        .and(field("t_order.amount").ge(new BigDecimal("100"))))
+List<TUser> users = jooqDsl.selectDistinct(T_USER.fields())
+    .from(T_USER)
+    .join(T_ORDER).on(T_USER.ID.eq(T_ORDER.USER_ID))
+    .where(T_ORDER.STATUS.eq(1)
+        .and(T_ORDER.AMOUNT.ge(new BigDecimal("100"))))
     .limit(20)
-    .fetchInto(JooqUser.class);
+    .fetchInto(TUser.class);
 ```
 
-**Hibernate**:
+**Hibernate** - HQL with multiple parameters:
 ```java
 TypedQuery<HibernateUser> query = entityManager.createQuery(
     "SELECT DISTINCT u FROM HibernateUser u " +
@@ -335,6 +370,181 @@ query.setParameter("status", 1);
 query.setParameter("minAmount", new BigDecimal("100"));
 query.setMaxResults(20);
 List<HibernateUser> users = query.getResultList();
+```
+
+### Example 5: Single Insert (⚡ EasyQuery: 44.9K ops/s - 194x faster than Hibernate!)
+
+**EasyQuery** - Object-based with transaction:
+```java
+try (Transaction transaction = easyEntityQuery.beginTransaction()) {
+    User user = new User(id, "username", "email@example.com", 25, "1234567890", "Address");
+    easyEntityQuery.insertable(user).executeRows();
+    transaction.commit();
+}
+```
+
+**JOOQ** - SQL-style builder with transaction:
+```java
+jooqDsl.transaction(configuration -> {
+    DSL.using(configuration)
+        .insertInto(T_USER)
+        .set(T_USER.ID, id)
+        .set(T_USER.USERNAME, "username")
+        .set(T_USER.EMAIL, "email@example.com")
+        .set(T_USER.AGE, 25)
+        .set(T_USER.PHONE, "1234567890")
+        .set(T_USER.ADDRESS, "Address")
+        .execute();
+});
+```
+
+**Hibernate** - Entity persist with manual transaction:
+```java
+entityManager.getTransaction().begin();
+try {
+    HibernateUser user = new HibernateUser(id, "username", "email@example.com", 
+                                           25, "1234567890", "Address");
+    entityManager.persist(user);
+    entityManager.getTransaction().commit();
+} catch (Exception e) {
+    if (entityManager.getTransaction().isActive()) {
+        entityManager.getTransaction().rollback();
+    }
+    throw e;
+}
+```
+
+### Example 6: Batch Insert (⚡ EasyQuery: 83.8 ops/s - 1.06x faster)
+
+**EasyQuery** - Simple batch method:
+```java
+try (Transaction transaction = easyEntityQuery.beginTransaction()) {
+    List<User> users = new ArrayList<>();
+    for (int i = 0; i < 1000; i++) {
+        users.add(new User(UUID.randomUUID().toString(), "user_" + i, 
+                          "user@example.com", 25 + i, "1234567890", "Address"));
+    }
+    easyEntityQuery.insertable(users).batch(true).executeRows();
+    transaction.commit();
+}
+```
+
+**JOOQ** - Batch with records:
+```java
+List<TUserRecord> records = new ArrayList<>();
+for (int i = 0; i < 1000; i++) {
+    TUserRecord record = new TUserRecord();
+    record.setId(UUID.randomUUID().toString());
+    record.setUsername("user_" + i);
+    // ... set other fields
+    records.add(record);
+}
+jooqDsl.transaction(configuration -> {
+    DSL.using(configuration).batchInsert(records).execute();
+});
+```
+
+**Hibernate** - Loop with flush/clear:
+```java
+entityManager.getTransaction().begin();
+try {
+    for (int i = 0; i < 1000; i++) {
+        HibernateUser user = new HibernateUser(UUID.randomUUID().toString(), 
+                                               "user_" + i, "user@example.com", 
+                                               25 + i, "1234567890", "Address");
+        entityManager.persist(user);
+    }
+    entityManager.flush();
+    entityManager.clear();
+    entityManager.getTransaction().commit();
+} catch (Exception e) {
+    if (entityManager.getTransaction().isActive()) {
+        entityManager.getTransaction().rollback();
+    }
+    throw e;
+}
+```
+
+### Example 7: Update by ID (⚡ EasyQuery: 116K ops/s - 1.29x faster)
+
+**EasyQuery** - Fluent update API:
+```java
+try (Transaction transaction = easyEntityQuery.beginTransaction()) {
+    long updated = easyEntityQuery.updatable(User.class)
+        .setColumns(u -> u.age().set(99))
+        .where(u -> u.id().eq(userId))
+        .executeRows();
+    transaction.commit();
+}
+```
+
+**JOOQ** - SQL-style update:
+```java
+int updated = jooqDsl.transactionResult(configuration -> {
+    return DSL.using(configuration)
+        .update(T_USER)
+        .set(T_USER.AGE, 99)
+        .where(T_USER.ID.eq(userId))
+        .execute();
+});
+```
+
+**Hibernate** - HQL update with manual transaction:
+```java
+entityManager.getTransaction().begin();
+try {
+    Query query = entityManager.createQuery(
+        "UPDATE HibernateUser u SET u.age = :age WHERE u.id = :id");
+    query.setParameter("age", 99);
+    query.setParameter("id", userId);
+    int updated = query.executeUpdate();
+    entityManager.getTransaction().commit();
+} catch (Exception e) {
+    if (entityManager.getTransaction().isActive()) {
+        entityManager.getTransaction().rollback();
+    }
+    throw e;
+}
+```
+
+### Example 8: Delete by Condition (⚡ EasyQuery: 380K ops/s - 1.32x faster)
+
+**EasyQuery** - Lambda-based delete:
+```java
+try (Transaction transaction = easyEntityQuery.beginTransaction()) {
+    long deleted = easyEntityQuery.deletable(User.class)
+        .allowDeleteStatement(true)
+        .where(u -> u.age().ge(40))
+        .executeRows();
+    transaction.commit();
+}
+```
+
+**JOOQ** - SQL-style delete:
+```java
+int deleted = jooqDsl.transactionResult(configuration -> {
+    return DSL.using(configuration)
+        .deleteFrom(T_USER)
+        .where(T_USER.AGE.ge(40))
+        .execute();
+});
+```
+
+**Hibernate** - HQL delete with manual transaction:
+```java
+entityManager.getTransaction().begin();
+try {
+    Query query = entityManager.createQuery(
+        "DELETE FROM HibernateUser u WHERE u.age >= :minAge");
+    query.setParameter("minAge", 40);
+    int deleted = query.executeUpdate();
+    entityManager.getTransaction().commit();
+} catch (Exception e) {
+    if (entityManager.getTransaction().isActive()) {
+        entityManager.getTransaction().rollback();
+    }
+    throw e;
+}
 ```
 
 ## 💡 Key Advantages
