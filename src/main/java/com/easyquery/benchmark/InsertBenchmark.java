@@ -27,9 +27,9 @@ import static com.easyquery.benchmark.jooq.generated.Tables.T_USER;
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)
 @State(Scope.Benchmark)
-@Warmup(iterations = 5, time = 3)
-@Measurement(iterations = 10, time = 3)
-@Fork(3)
+@Warmup(iterations = 10, time = 5)
+@Measurement(iterations = 15, time = 5)
+@Fork(value = 3, jvmArgs = {"-Xms2g", "-Xmx2g", "-XX:+UseG1GC"})
 @Threads(1)
 public class InsertBenchmark {
 
