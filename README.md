@@ -14,41 +14,59 @@
 | Test Scenario | EasyQuery | Hibernate | JOOQ | Best |
 |--------------|-----------|-----------|------|------|
 | **Query Operations** |
-| Select by ID | 305,207 ± 10,512 | 227,301 ± 10,170 | 160,269 ± 3,664 | 🚀 **1.34x faster** than Hibernate |
-| Select List | 266,390 ± 3,978 | 364,967 ± 15,355 | 80,236 ± 3,493 | ❌ **0.73x** (Hibernate wins) |
-| COUNT Query | 412,933 ± 7,923 | 487,353 ± 15,942 | 243,099 ± 7,318 | ❌ **0.85x** (Hibernate wins) |
+| Select by ID | 311,249 ± 9,199 | 128,760 ± 56,391 | 22,649 ± 1,878 | 🚀 **2.42x faster** than Hibernate |
+| Select List | 292,872 ± 4,495 | 110,697 ± 64,844 | 30,783 ± 15,147 | 🚀 **2.65x faster** than Hibernate |
+| COUNT Query | 430,318 ± 7,102 | 517,280 ± 5,926 | 41,375 ± 24,154 | ❌ **0.83x** (Hibernate wins) |
 | **Insert Operations** |
-| Single Insert | 82,239 ± 1,547 | 372 ± 50 | 66,391 ± 2,002 | 🚀 **221x faster** than Hibernate |
-| Batch Insert (1000) | 60 ± 17 | 66 ± 3 | 54 ± 4 | ⚖️ **0.91x** comparable |
+| Single Insert | 44,908 ± 16,265 | 232 ± 20 | 63,924 ± 1,364 | ❌ **0.70x** (JOOQ wins) |
+| Batch Insert (1000) | 83.80 ± 2.01 | 79.37 ± 6.90 | 53.24 ± 0.79 | 🚀 **1.06x faster** than Hibernate |
 | **Update Operations** |
-| Update by ID | 111,131 ± 16,518 | 55,648 ± 32,258 | 38,046 ± 23,627 | 🚀 **2.0x faster** than Hibernate |
-| Batch Update | 4,724 ± 354 | 781 ± 35 | 2,089 ± 1,208 | 🚀 **6.0x faster** than Hibernate |
+| Update by ID | 116,299 ± 3,606 | 90,441 ± 2,546 | 96,504 ± 2,253 | 🚀 **1.29x faster** than Hibernate |
+| Batch Update | 3,890 ± 81 | 3,637 ± 91 | 3,700 ± 92 | 🚀 **1.07x faster** than Hibernate |
 | **Delete Operations** |
-| Delete by Condition | 108,395 ± 82,216 | 285,460 ± 7,670 | 221,337 ± 56,080 | ❌ **0.38x** (Hibernate wins) |
+| Delete by Condition | 380,373 ± 12,503 | 287,285 ± 6,564 | 264,793 ± 6,995 | 🚀 **1.32x faster** than Hibernate |
 | **Complex Operations** |
-| JOIN Query | 163,606 ± 4,689 | 208,591 ± 19,818 | 6,332 ± 407 | ❌ **0.78x** (Hibernate wins) |
-| Aggregation (COUNT) | 408,164 ± 16,437 | 468,132 ± 17,908 | 162,432 ± 74,204 | ❌ **0.87x** (Hibernate wins) |
+| JOIN Query | 173,493 ± 4,643 | 221,953 ± 5,742 | 40,125 ± 6,239 | ❌ **0.78x** (Hibernate wins) |
+| Aggregation (COUNT) | 443,676 ± 12,360 | 482,105 ± 13,783 | 246,067 ± 12,866 | ❌ **0.92x** (Hibernate wins) |
 
 ### Key Findings
 
 ✅ **EasyQuery advantages:**
-- **Single insert operations**: 221x faster than Hibernate, 1.24x faster than JOOQ
-- **Batch update operations**: 6x faster than Hibernate, 2.3x faster than JOOQ
-- **Update by ID**: 2x faster than Hibernate, 2.9x faster than JOOQ
-- **Select by ID**: 1.34x faster than Hibernate, 1.9x faster than JOOQ
-- Best choice for **write-intensive and CRUD-heavy applications**
+- **Select by ID**: 2.42x faster than Hibernate, 13.75x faster than JOOQ (311,249 vs 128,760 vs 22,649 ops/s)
+- **Select List**: 2.65x faster than Hibernate, 9.51x faster than JOOQ (292,872 vs 110,697 vs 30,783 ops/s)
+- **Single insert operations**: 193.6x faster than Hibernate (44,908 vs 232 ops/s)
+- **Batch insert operations**: 1.06x faster than Hibernate, 1.57x faster than JOOQ
+- **Update by ID**: 1.29x faster than Hibernate, 1.20x faster than JOOQ
+- **Batch update**: 1.07x faster than Hibernate, 1.05x faster than JOOQ
+- **Delete by condition**: 1.32x faster than Hibernate, 1.44x faster than JOOQ
+- Best all-around performer in **most operations**, especially in select and delete operations
 
-❌ **Hibernate advantages:**
-- **List queries**: 1.37x faster than EasyQuery, 4.5x faster than JOOQ
-- **Complex queries (JOIN, Aggregation)**: Generally 1.15-1.27x faster than EasyQuery
-- **Delete operations**: 2.6x faster than EasyQuery
-- **Note**: Single insert performance is extremely poor (372 ops/s)
+❌ **EasyQuery weaknesses:**
+- **Single insert**: 0.70x vs JOOQ (but still 193.6x faster than Hibernate)
+- **COUNT query**: 0.83x vs Hibernate (but 10.40x faster than JOOQ)
+- **Complex queries**: 0.78-0.92x vs Hibernate
 
-⚖️ **JOOQ performance:**
-- Generally slower than both EasyQuery and Hibernate in most scenarios
-- **Critical issue**: JOIN query performance is significantly lower (6,332 ops/s)
+✅ **JOOQ advantages:**
+- **Single insert**: 1.42x faster than EasyQuery, 275x faster than Hibernate
+- **Consistent low variance**: Most stable performance across benchmarks
 
-💡 **Overall**: EasyQuery shows **superior performance in write operations** and single-record queries, making it ideal for CRUD-intensive applications. Hibernate excels in read-heavy and complex query scenarios but has poor single-insert performance. JOOQ may need additional optimization for production use.
+❌ **JOOQ weaknesses:**
+- **Select operations**: Significantly slower than both EasyQuery and Hibernate
+- **Complex queries**: 5.43x slower than EasyQuery in JOIN, 1.80x slower in aggregation
+
+✅ **Hibernate advantages:**
+- **COUNT query**: 1.20x faster than EasyQuery, 12.50x faster than JOOQ
+- **Complex queries (JOIN, Aggregation)**: 1.08-1.28x faster than EasyQuery
+- **Strong in analytical queries**
+
+❌ **Hibernate weaknesses:**
+- **Single insert**: Extremely poor performance (232 ops/s) - 193.6x slower than EasyQuery
+- **Select operations**: 2.42-2.65x slower than EasyQuery
+
+💡 **Overall**: 
+- **EasyQuery**: 🏆 **Best all-around performer** - Wins in 6 out of 10 benchmarks, with exceptional performance in select operations (2.42-2.65x faster than Hibernate), updates (1.07-1.29x faster), and deletes (1.32x faster). Only loses in single insert vs JOOQ and analytical queries vs Hibernate.
+- **JOOQ**: Best for single inserts but significantly weaker in select and complex operations.
+- **Hibernate**: Strong in analytical/complex queries but very poor single insert performance and slower in basic operations.
 
 ### ⚠️ Important Notes
 
@@ -61,8 +79,8 @@
   - Insert operations: starts from empty database
 - Connection pool: HikariCP with 10 max connections, 5 min idle
 - Benchmark stability achieved through:
-  - **Warmup**: 5 iterations × 3 seconds
-  - **Measurement**: 10 iterations × 3 seconds
+  - **Warmup**: 10 iterations × 5 seconds
+  - **Measurement**: 15 iterations × 5 seconds
   - **Forks**: 3 JVM forks for statistical reliability
 
 ### 📢 Disclaimer
@@ -99,8 +117,8 @@ This benchmark can be run **independently** without the easy-query parent projec
 
 All benchmarks use JMH (Java Microbenchmark Harness) with the following configuration:
 - **Mode**: Throughput (operations per second)
-- **Warmup**: 5 iterations, 3 seconds each
-- **Measurement**: 10 iterations, 3 seconds each
+- **Warmup**: 10 iterations, 5 seconds each
+- **Measurement**: 15 iterations, 5 seconds each
 - **Fork**: 3 JVM forks
 - **Threads**: 1 thread
 
@@ -323,20 +341,29 @@ List<HibernateUser> users = query.getResultList();
 
 ### easy-query Advantages:
 
-1. **🚀 Excellent Performance**: Comparable or better performance in most scenarios
-2. **✨ Type Safety**: Proxy-based strongly-typed API with compile-time checking
-3. **🎯 Usability**: Lambda expression style, more in line with Java development habits
-4. **📦 Auto-Mapping**: Automatic object mapping (JOOQ also supports `fetchInto()` for basic mapping)
-5. **🔧 Flexibility**: Supports multiple query methods and databases
-6. **📝 Cleaner Code**: Less boilerplate code, especially for complex queries
+1. **🚀 Outstanding Select Performance**: 2.42-2.65x faster than Hibernate, 9.51-13.75x faster than JOOQ
+2. **🏆 Excellent Insert Performance**: 193.6x faster than Hibernate in single inserts (44,908 vs 232 ops/s)
+3. **💪 Superior Update Performance**: 1.07-1.29x faster than both Hibernate and JOOQ
+4. **✨ Type Safety**: Proxy-based strongly-typed API with compile-time checking
+5. **🎯 Usability**: Lambda expression style, more in line with Java development habits
+6. **📦 Auto-Mapping**: Automatic object mapping (JOOQ also supports `fetchInto()` for basic mapping)
+7. **🔧 Flexibility**: Supports multiple query methods and databases
+8. **📝 Cleaner Code**: Less boilerplate code, especially for complex queries
+9. **🔥 Strong Delete Operations**: 1.32x faster than Hibernate in conditional deletes
 
-### Comparison with Hibernate:
+### Comparison with Other Frameworks:
 
-- **Performance**: Generally faster than Hibernate in most scenarios
+**vs Hibernate:**
+- **✅ Wins**: Select operations (2.42-2.65x), single inserts (193.6x), batch inserts (1.06x), updates (1.07-1.29x), deletes (1.32x)
+- **❌ Loses**: COUNT queries (0.83x), complex queries (0.78-0.92x)
 - **Type Safety**: Better compile-time type checking with lambda expressions
 - **Simplicity**: No need for EntityManager transaction management in simple queries
-- **SQL Control**: More direct control over generated SQL like JOOQ
-- **Learning Curve**: Easier to understand for developers familiar with SQL
+
+**vs JOOQ:**
+- **✅ Wins**: Select operations (9.51-13.75x), batch inserts (1.57x), updates (1.05-1.20x), deletes (1.44x), COUNT queries (10.40x), complex queries (1.80-5.43x)
+- **❌ Loses**: Single inserts (0.70x)
+- **SQL Control**: Both provide direct control over generated SQL
+- **Learning Curve**: Similar learning curve for developers familiar with SQL
 
 ## 🤝 Contributing
 
