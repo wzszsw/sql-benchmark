@@ -620,6 +620,6 @@ This project follows the Apache License 2.0.
 ## 🔗 Related Links
 
 - [easy-query GitHub](https://github.com/xuejmnet/easy-query)
-- [easy-query Documentation](https://xuejmnet.github.io/easy-query-doc/)
+- [easy-query Documentation](https://xuejmnet.github.io/easy-query-doc/en)
 - [JOOQ Official Site](https://www.jooq.org/)
 - [JMH Official Site](https://github.com/openjdk/jmh)
