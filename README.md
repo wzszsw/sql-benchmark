@@ -607,38 +607,6 @@ query.setMaxResults(20);
 List<HibernateUser> users = query.getResultList();
 ```
 
-## 💡 Key Advantages
-
-### easy-query Advantages:
-
-1. **🚀 Outstanding Query Performance**: 1.13-1.75x faster than Hibernate, 2.25-3.59x faster than JOOQ in all query operations
-2. **🏆 Excellent Insert Performance**: 1.11x faster than Hibernate in single inserts, 1.02x faster in batch inserts, 1.27-1.66x faster than JOOQ
-3. **💪 Superior Update Performance**: 1.08-1.36x faster than Hibernate, 1.01-1.25x faster than JOOQ
-4. **🔥 Dominant Complex Query Performance**: 2.46x faster in JOIN queries, 6.46x faster in subqueries compared to Hibernate
-5. **✨ Type Safety**: Proxy-based strongly-typed API with compile-time checking
-6. **🎯 Usability**: Lambda expression style, more in line with Java development habits
-7. **📦 Auto-Mapping**: Automatic object mapping (JOOQ also supports `fetchInto()` for basic mapping)
-8. **🔧 Flexibility**: Supports multiple query methods and databases
-9. **📝 Cleaner Code**: Less boilerplate code, especially for complex queries
-10. **🏅 Best Overall Performance**: Wins in 9 out of 10 benchmarks, making it the clear performance leader
-
-### Comparison with Other Frameworks:
-
-**vs Hibernate:**
-- **✅ Wins**: Select by ID (1.13x), Select List (1.75x), single inserts (1.11x), batch inserts (1.02x), updates (1.08-1.36x), deletes (1.81x), JOIN queries (2.46x), subqueries (6.46x)
-- **❌ Loses**: COUNT queries (0.99x - virtually tied, negligible difference)
-- **Type Safety**: Better compile-time type checking with lambda expressions
-- **Simplicity**: No need for EntityManager transaction management in simple queries
-- **Complex Queries**: Much faster in complex scenarios (2.46-6.46x) - a game changer!
-- **Best Use Case**: All scenarios - from simple CRUD to complex analytical queries
-
-**vs JOOQ:**
-- **✅ Wins**: All benchmarks except delete (2.25-23.72x faster in queries, 1.01-1.66x faster in inserts/updates)
-- **❌ Loses**: Delete by condition (0.90x)
-- **SQL Control**: Both provide direct control over generated SQL
-- **Learning Curve**: Similar learning curve for developers familiar with SQL
-- **Best Use Case**: Better all-around choice than JOOQ for virtually all scenarios
-
 ## 🤝 Contributing
 
 Issues and Pull Requests are welcome!
