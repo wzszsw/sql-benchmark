@@ -91,48 +91,6 @@ Hibernate    ███████                                            15
 JOOQ         ██                                                  5,296 ± 180
 ```
 
-### Key Findings
-
-✅ **EasyQuery advantages:**
-- **Select by ID**: 1.13x faster than Hibernate, 2.25x faster than JOOQ (298,303 vs 264,571 vs 132,786 ops/s)
-- **Select List**: 1.75x faster than Hibernate, 3.59x faster than JOOQ (247,088 vs 141,050 vs 68,773 ops/s)
-- **Single insert operations**: 1.11x faster than Hibernate, 1.27x faster than JOOQ (63,866 vs 57,385 vs 50,257 ops/s)
-- **Batch insert operations**: 1.02x faster than Hibernate, 1.66x faster than JOOQ
-- **Update by ID**: 1.36x faster than Hibernate, 1.25x faster than JOOQ
-- **Batch update**: 1.08x faster than Hibernate, 1.01x faster than JOOQ
-- **Complex JOIN query**: 2.46x faster than Hibernate, 23.72x faster than JOOQ
-- **Complex Subquery**: 6.46x faster than Hibernate, 19.01x faster than JOOQ
-- **Best all-around performer**: Wins in 9 out of 10 benchmarks with exceptional performance across the board
-
-❌ **EasyQuery weaknesses:**
-- **COUNT query**: 0.99x vs Hibernate (virtually tied, difference is negligible)
-- **Delete by condition**: 0.90x vs JOOQ (but still 1.81x faster than Hibernate)
-
-✅ **JOOQ advantages:**
-- **Consistent low variance**: Most stable performance in some benchmarks
-- **Predictable SQL generation**: Direct SQL control
-- **Delete operations**: 1.11x faster than EasyQuery in this specific test
-
-❌ **JOOQ weaknesses:**
-- **Overall performance**: Significantly slower than both EasyQuery and Hibernate in most scenarios
-- **Complex queries**: Much slower than both frameworks (23.72x slower than EasyQuery in JOIN, 19.01x slower in subquery)
-- **Query operations**: 2.25-3.59x slower than EasyQuery
-
-✅ **Hibernate advantages:**
-- **COUNT query**: 1.01x faster than EasyQuery (virtually tied)
-- **Stable performance**: Generally good performance in query operations
-
-❌ **Hibernate weaknesses:**
-- **Complex queries**: Much slower than EasyQuery - 2.46x slower in JOIN, 6.46x slower in subquery
-- **Select operations**: 1.13-1.75x slower than EasyQuery
-- **Updates and deletes**: 1.08-1.81x slower than EasyQuery
-- **Single insert**: 1.11x slower than EasyQuery
-
-💡 **Overall**: 
-- **EasyQuery**: 🏆 **Overall Winner - Best for all scenarios** - Dominates in 9 out of 10 benchmarks with exceptional performance across all operations: queries (1.13-1.75x faster), inserts (1.02-1.27x faster), updates (1.08-1.36x faster), and especially complex queries (2.46-6.46x faster than Hibernate). The only tie is COUNT query where both EasyQuery and Hibernate are virtually equal. **Best choice for both CRUD-intensive and complex query scenarios**.
-- **Hibernate**: 🎯 **Solid alternative** - Good overall performance but consistently slower than EasyQuery in most scenarios. Still much faster than JOOQ. Suitable for projects already using Hibernate.
-- **JOOQ**: ⚖️ **Slowest performer** - Significantly slower across the board (2-24x slower than EasyQuery), only wins in delete operations. Suitable only when direct SQL control is the absolute priority over performance.
-
 ### ⚠️ Important Notes
 
 - All frameworks run in **autocommit mode** without explicit transaction management for fair comparison
@@ -161,22 +119,6 @@ JOOQ         ██                                                  5,296 ± 18
 💡 **Contributions are welcome!** If you find better ways to optimize any framework's performance, please submit a pull request. Fair comparison benefits everyone in the community.
 
 ---
-
-## 📊 Overview
-
-This is a **standalone** comprehensive performance benchmark comparing **easy-query**, **JOOQ**, and **Hibernate** using JMH (Java Microbenchmark Harness).
-
-> **Talk is cheap, show me the code and benchmarks!**
-
-This project provides objective benchmark data to prove that easy-query is not just a JOOQ clone, but offers **exceptional performance advantages** across all scenarios - winning in 9 out of 10 benchmarks against both Hibernate and JOOQ, with particularly impressive results in complex queries (2.46-6.46x faster than Hibernate, 19-24x faster than JOOQ).
-
-### ✨ Standalone Project
-
-This benchmark can be run **independently** without the easy-query parent project:
-- ✅ No parent POM dependency
-- ✅ Self-contained configuration
-- ✅ Clone and run anywhere
-- ✅ All dependencies explicitly declared
 
 ## 🎯 Test Scenarios
 
