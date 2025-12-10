@@ -607,12 +607,6 @@ query.setMaxResults(20);
 List<HibernateUser> users = query.getResultList();
 ```
 
-## 🤝 Contributing
-
-Issues and Pull Requests are welcome!
-
-If you find any problems with the tests or have suggestions for improvements, please feel free to open an issue.
-
 ## 📄 License
 
 This project follows the Apache License 2.0.
