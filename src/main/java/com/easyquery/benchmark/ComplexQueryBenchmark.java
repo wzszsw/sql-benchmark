@@ -1,5 +1,6 @@
 package com.easyquery.benchmark;
 
+import com.easy.query.core.proxy.sql.GroupKeys;
 import com.easyquery.benchmark.entity.Order;
 import com.easyquery.benchmark.entity.User;
 import com.easyquery.benchmark.jooq.generated.tables.pojos.TUser;
@@ -109,19 +110,36 @@ ComplexQueryBenchmark {
     }
 
     @Benchmark
-    public long easyQueryAggregation() {
-        return easyEntityQuery.queryable(Order.class)
-                .where(o -> o.status().eq(1))
-                .count();
+    public List<User> easyQuerySubquery() {
+        // Query users whose total order amount exceeds 500
+        return easyEntityQuery.queryable(User.class)
+                .where(u -> {
+                    u.id().in(
+                        easyEntityQuery.queryable(Order.class)
+                            .where(o -> o.status().eq(1))
+                            .groupBy(o -> GroupKeys.of(o.userId()))
+                            .having(o -> o.groupTable().amount().sum().gt(new BigDecimal("500")))
+                            .select(o -> o.groupTable().userId())
+                    );
+                })
+                .limit(20)
+                .toList();
     }
 
     @Benchmark
-    public long jooqAggregation() {
-        Integer count = jooqDsl.selectCount()
-                .from(T_ORDER)
-                .where(T_ORDER.STATUS.eq(1))
-                .fetchOne(0, Integer.class);
-        return count != null ? count : 0;
+    public List<TUser> jooqSubquery() {
+        // Query users whose total order amount exceeds 500
+        return jooqDsl.select(T_USER.fields())
+                .from(T_USER)
+                .where(T_USER.ID.in(
+                    jooqDsl.select(T_ORDER.USER_ID)
+                        .from(T_ORDER)
+                        .where(T_ORDER.STATUS.eq(1))
+                        .groupBy(T_ORDER.USER_ID)
+                        .having(DSL.sum(T_ORDER.AMOUNT).gt(new BigDecimal("500")))
+                ))
+                .limit(20)
+                .fetchInto(TUser.class);
     }
 
     @Benchmark
@@ -138,12 +156,21 @@ ComplexQueryBenchmark {
     }
 
     @Benchmark
-    public long hibernateAggregation() {
-        TypedQuery<Long> query = entityManager.createQuery(
-                "SELECT COUNT(o) FROM HibernateOrder o WHERE o.status = :status",
-                Long.class);
+    public List<HibernateUser> hibernateSubquery() {
+        // Query users whose total order amount exceeds 500
+        TypedQuery<HibernateUser> query = entityManager.createQuery(
+                "SELECT u FROM HibernateUser u " +
+                "WHERE u.id IN (" +
+                "  SELECT o.userId FROM HibernateOrder o " +
+                "  WHERE o.status = :status " +
+                "  GROUP BY o.userId " +
+                "  HAVING SUM(o.amount) > :minTotalAmount" +
+                ")",
+                HibernateUser.class);
         query.setParameter("status", 1);
-        return query.getSingleResult();
+        query.setParameter("minTotalAmount", new BigDecimal("500"));
+        query.setMaxResults(20);
+        return query.getResultList();
     }
 
     @TearDown(Level.Trial)
