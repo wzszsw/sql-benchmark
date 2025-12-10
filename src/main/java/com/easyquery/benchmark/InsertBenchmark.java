@@ -35,7 +35,6 @@ public class InsertBenchmark {
 
     private DefaultEasyEntityQuery easyEntityQuery;
     private DSLContext jooqDsl;
-    private EntityManager entityManager;
 
     @Setup(Level.Trial)
     public void setup() {
@@ -49,8 +48,6 @@ public class InsertBenchmark {
         easyEntityQuery = new DefaultEasyEntityQuery(easyQueryClient);
 
         jooqDsl = DSL.using(DatabaseInitializer.getDataSource(), SQLDialect.H2);
-
-        entityManager = HibernateUtil.createEntityManager();
     }
 
     @Setup(Level.Iteration)
@@ -123,44 +120,55 @@ public class InsertBenchmark {
 
     @Benchmark
     public void hibernateInsertSingle() {
-        entityManager.getTransaction().begin();
+        EntityManager entityManager = HibernateUtil.createEntityManager();
         try {
-            String id = UUID.randomUUID().toString();
-            HibernateUser user = new HibernateUser(id, "user_" + id, "user@example.com", 25, "1234567890", "Test Address");
-            entityManager.persist(user);
-            entityManager.getTransaction().commit();
-        } catch (Exception e) {
-            if (entityManager.getTransaction().isActive()) {
-                entityManager.getTransaction().rollback();
+            entityManager.getTransaction().begin();
+            try {
+                String id = UUID.randomUUID().toString();
+                HibernateUser user = new HibernateUser(id, "user_" + id, "user@example.com", 25, "1234567890", "Test Address");
+                entityManager.persist(user);
+                entityManager.getTransaction().commit();
+            } catch (Exception e) {
+                if (entityManager.getTransaction().isActive()) {
+                    entityManager.getTransaction().rollback();
+                }
+                throw e;
             }
-            throw e;
+        } finally {
+            if (entityManager != null && entityManager.isOpen()) {
+                entityManager.close();
+            }
         }
     }
 
     @Benchmark
     public void hibernateInsertBatch1000() {
-        entityManager.getTransaction().begin();
+        EntityManager entityManager = HibernateUtil.createEntityManager();
         try {
-            for (int i = 0; i < 1000; i++) {
-                String id = UUID.randomUUID().toString();
-                HibernateUser user = new HibernateUser(id, "user_" + id, "user@example.com", 25 + (i % 50), "1234567890", "Test Address");
-                entityManager.persist(user);
+            entityManager.getTransaction().begin();
+            try {
+                for (int i = 0; i < 1000; i++) {
+                    String id = UUID.randomUUID().toString();
+                    HibernateUser user = new HibernateUser(id, "user_" + id, "user@example.com", 25 + (i % 50), "1234567890", "Test Address");
+                    entityManager.persist(user);
+                }
+                entityManager.flush();
+                entityManager.clear();
+                entityManager.getTransaction().commit();
+            } catch (Exception e) {
+                if (entityManager.getTransaction().isActive()) {
+                    entityManager.getTransaction().rollback();
+                }
+                throw e;
             }
-            entityManager.flush();
-            entityManager.clear();
-            entityManager.getTransaction().commit();
-        } catch (Exception e) {
-            if (entityManager.getTransaction().isActive()) {
-                entityManager.getTransaction().rollback();
+        } finally {
+            if (entityManager != null && entityManager.isOpen()) {
+                entityManager.close();
             }
-            throw e;
         }
     }
 
     @TearDown(Level.Trial)
     public void tearDown() {
-        if (entityManager != null && entityManager.isOpen()) {
-            entityManager.close();
-        }
     }
 }

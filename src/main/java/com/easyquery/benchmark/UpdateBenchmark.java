@@ -32,7 +32,6 @@ public class UpdateBenchmark {
 
     private DefaultEasyEntityQuery easyEntityQuery;
     private DSLContext jooqDsl;
-    private EntityManager entityManager;
     private String[] testUserIds;
     private int userIdIndex = 0;
 
@@ -51,8 +50,6 @@ public class UpdateBenchmark {
         easyEntityQuery = new DefaultEasyEntityQuery(easyQueryClient);
 
         jooqDsl = DSL.using(DatabaseInitializer.getDataSource(), SQLDialect.H2);
-
-        entityManager = HibernateUtil.createEntityManager();
 
         insertTestData();
     }
@@ -127,46 +124,57 @@ public class UpdateBenchmark {
 
     @Benchmark
     public int hibernateUpdateById() {
-        String userId = testUserIds[(userIdIndex++) % testUserIds.length];
-        entityManager.getTransaction().begin();
+        EntityManager entityManager = HibernateUtil.createEntityManager();
         try {
-            Query query = entityManager.createQuery("UPDATE HibernateUser u SET u.age = :age WHERE u.id = :id");
-            query.setParameter("age", 99);
-            query.setParameter("id", userId);
-            int result = query.executeUpdate();
-            entityManager.getTransaction().commit();
-            return result;
-        } catch (Exception e) {
-            if (entityManager.getTransaction().isActive()) {
-                entityManager.getTransaction().rollback();
+            String userId = testUserIds[(userIdIndex++) % testUserIds.length];
+            entityManager.getTransaction().begin();
+            try {
+                Query query = entityManager.createQuery("UPDATE HibernateUser u SET u.age = :age WHERE u.id = :id");
+                query.setParameter("age", 99);
+                query.setParameter("id", userId);
+                int result = query.executeUpdate();
+                entityManager.getTransaction().commit();
+                return result;
+            } catch (Exception e) {
+                if (entityManager.getTransaction().isActive()) {
+                    entityManager.getTransaction().rollback();
+                }
+                throw e;
             }
-            throw e;
+        } finally {
+            if (entityManager != null && entityManager.isOpen()) {
+                entityManager.close();
+            }
         }
     }
 
     @Benchmark
     public int hibernateUpdateBatch() {
-        entityManager.getTransaction().begin();
+        EntityManager entityManager = HibernateUtil.createEntityManager();
         try {
-            Query query = entityManager.createQuery("UPDATE HibernateUser u SET u.age = :age WHERE u.age >= :minAge");
-            query.setParameter("age", 88);
-            query.setParameter("minAge", 50);
-            int result = query.executeUpdate();
-            entityManager.getTransaction().commit();
-            return result;
-        } catch (Exception e) {
-            if (entityManager.getTransaction().isActive()) {
-                entityManager.getTransaction().rollback();
+            entityManager.getTransaction().begin();
+            try {
+                Query query = entityManager.createQuery("UPDATE HibernateUser u SET u.age = :age WHERE u.age >= :minAge");
+                query.setParameter("age", 88);
+                query.setParameter("minAge", 50);
+                int result = query.executeUpdate();
+                entityManager.getTransaction().commit();
+                return result;
+            } catch (Exception e) {
+                if (entityManager.getTransaction().isActive()) {
+                    entityManager.getTransaction().rollback();
+                }
+                throw e;
             }
-            throw e;
+        } finally {
+            if (entityManager != null && entityManager.isOpen()) {
+                entityManager.close();
+            }
         }
     }
 
     @TearDown(Level.Trial)
     public void tearDown() {
-        if (entityManager != null && entityManager.isOpen()) {
-            entityManager.close();
-        }
         DatabaseInitializer.clearData();
     }
 }

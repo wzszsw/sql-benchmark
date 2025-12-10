@@ -38,7 +38,6 @@ ComplexQueryBenchmark {
 
     private DefaultEasyEntityQuery easyEntityQuery;
     private DSLContext jooqDsl;
-    private EntityManager entityManager;
 
     @Setup(Level.Trial)
     public void setup() {
@@ -55,8 +54,6 @@ ComplexQueryBenchmark {
         easyEntityQuery = new DefaultEasyEntityQuery(easyQueryClient);
 
         jooqDsl = DSL.using(DatabaseInitializer.getDataSource(), SQLDialect.H2);
-
-        entityManager = HibernateUtil.createEntityManager();
 
         insertTestData();
     }
@@ -144,40 +141,51 @@ ComplexQueryBenchmark {
 
     @Benchmark
     public List<HibernateUser> hibernateJoinQuery() {
-        TypedQuery<HibernateUser> query = entityManager.createQuery(
-                "SELECT DISTINCT u FROM HibernateUser u " +
-                "JOIN HibernateOrder o ON u.id = o.userId " +
-                "WHERE o.status = :status AND o.amount >= :minAmount",
-                HibernateUser.class);
-        query.setParameter("status", 1);
-        query.setParameter("minAmount", new BigDecimal("100"));
-        query.setMaxResults(20);
-        return query.getResultList();
+        EntityManager entityManager = HibernateUtil.createEntityManager();
+        try {
+            TypedQuery<HibernateUser> query = entityManager.createQuery(
+                    "SELECT DISTINCT u FROM HibernateUser u " +
+                    "JOIN HibernateOrder o ON u.id = o.userId " +
+                    "WHERE o.status = :status AND o.amount >= :minAmount",
+                    HibernateUser.class);
+            query.setParameter("status", 1);
+            query.setParameter("minAmount", new BigDecimal("100"));
+            query.setMaxResults(20);
+            return query.getResultList();
+        } finally {
+            if (entityManager != null && entityManager.isOpen()) {
+                entityManager.close();
+            }
+        }
     }
 
     @Benchmark
     public List<HibernateUser> hibernateSubquery() {
-        // Query users whose total order amount exceeds 500
-        TypedQuery<HibernateUser> query = entityManager.createQuery(
-                "SELECT u FROM HibernateUser u " +
-                "WHERE u.id IN (" +
-                "  SELECT o.userId FROM HibernateOrder o " +
-                "  WHERE o.status = :status " +
-                "  GROUP BY o.userId " +
-                "  HAVING SUM(o.amount) > :minTotalAmount" +
-                ")",
-                HibernateUser.class);
-        query.setParameter("status", 1);
-        query.setParameter("minTotalAmount", new BigDecimal("500"));
-        query.setMaxResults(20);
-        return query.getResultList();
+        EntityManager entityManager = HibernateUtil.createEntityManager();
+        try {
+            // Query users whose total order amount exceeds 500
+            TypedQuery<HibernateUser> query = entityManager.createQuery(
+                    "SELECT u FROM HibernateUser u " +
+                    "WHERE u.id IN (" +
+                    "  SELECT o.userId FROM HibernateOrder o " +
+                    "  WHERE o.status = :status " +
+                    "  GROUP BY o.userId " +
+                    "  HAVING SUM(o.amount) > :minTotalAmount" +
+                    ")",
+                    HibernateUser.class);
+            query.setParameter("status", 1);
+            query.setParameter("minTotalAmount", new BigDecimal("500"));
+            query.setMaxResults(20);
+            return query.getResultList();
+        } finally {
+            if (entityManager != null && entityManager.isOpen()) {
+                entityManager.close();
+            }
+        }
     }
 
     @TearDown(Level.Trial)
     public void tearDown() {
-        if (entityManager != null && entityManager.isOpen()) {
-            entityManager.close();
-        }
         DatabaseInitializer.clearData();
     }
 }

@@ -33,7 +33,6 @@ public class QueryBenchmark {
 
     private DefaultEasyEntityQuery easyEntityQuery;
     private DSLContext jooqDsl;
-    private EntityManager entityManager;
     private String[] testUserIds;
     private int userIdIndex = 0;
 
@@ -53,18 +52,12 @@ public class QueryBenchmark {
 
         jooqDsl = DSL.using(DatabaseInitializer.getDataSource(), SQLDialect.H2);
 
-        entityManager = HibernateUtil.createEntityManager();
-
         insertTestData();
     }
 
     @Setup(Level.Iteration)
     public void setupIteration() {
         userIdIndex = 0;
-        // Clear Hibernate's first-level cache to ensure fair comparison
-        if (entityManager != null && entityManager.isOpen()) {
-            entityManager.clear();
-        }
     }
 
     private void insertTestData() {
@@ -132,39 +125,57 @@ public class QueryBenchmark {
 
     @Benchmark
     public HibernateUser hibernateSelectById() {
-        String userId = testUserIds[(userIdIndex++) % testUserIds.length];
-        // Use native query instead of find() to avoid first-level cache advantage
-        return (HibernateUser) entityManager.createNativeQuery(
-                "SELECT * FROM t_user WHERE id = ?", HibernateUser.class)
-                .setParameter(1, userId)
-                .getSingleResult();
+        EntityManager entityManager = HibernateUtil.createEntityManager();
+        try {
+            String userId = testUserIds[(userIdIndex++) % testUserIds.length];
+            TypedQuery<HibernateUser> query = entityManager.createQuery(
+                    "SELECT u FROM HibernateUser u WHERE u.id = :id", 
+                    HibernateUser.class);
+            query.setParameter("id", userId);
+            return query.getSingleResult();
+        } finally {
+            if (entityManager != null && entityManager.isOpen()) {
+                entityManager.close();
+            }
+        }
     }
 
     @Benchmark
     public List<HibernateUser> hibernateSelectList() {
-        TypedQuery<HibernateUser> query = entityManager.createQuery(
-                "SELECT u FROM HibernateUser u WHERE u.age >= :age ORDER BY u.username DESC",
-                HibernateUser.class);
-        query.setParameter("age", 25);
-        query.setMaxResults(10);
-        return query.getResultList();
+        EntityManager entityManager = HibernateUtil.createEntityManager();
+        try {
+            TypedQuery<HibernateUser> query = entityManager.createQuery(
+                    "SELECT u FROM HibernateUser u WHERE u.age >= :age ORDER BY u.username DESC",
+                    HibernateUser.class);
+            query.setParameter("age", 25);
+            query.setMaxResults(10);
+            return query.getResultList();
+        } finally {
+            if (entityManager != null && entityManager.isOpen()) {
+                entityManager.close();
+            }
+        }
     }
 
     @Benchmark
     public long hibernateCount() {
-        TypedQuery<Long> query = entityManager.createQuery(
-                "SELECT COUNT(u) FROM HibernateUser u WHERE u.age >= :minAge AND u.age <= :maxAge",
-                Long.class);
-        query.setParameter("minAge", 25);
-        query.setParameter("maxAge", 35);
-        return query.getSingleResult();
+        EntityManager entityManager = HibernateUtil.createEntityManager();
+        try {
+            TypedQuery<Long> query = entityManager.createQuery(
+                    "SELECT COUNT(u) FROM HibernateUser u WHERE u.age >= :minAge AND u.age <= :maxAge",
+                    Long.class);
+            query.setParameter("minAge", 25);
+            query.setParameter("maxAge", 35);
+            return query.getSingleResult();
+        } finally {
+            if (entityManager != null && entityManager.isOpen()) {
+                entityManager.close();
+            }
+        }
     }
 
     @TearDown(Level.Trial)
     public void tearDown() {
-        if (entityManager != null && entityManager.isOpen()) {
-            entityManager.close();
-        }
         DatabaseInitializer.clearData();
     }
 }

@@ -31,7 +31,6 @@ public class DeleteBenchmark {
 
     private DefaultEasyEntityQuery easyEntityQuery;
     private DSLContext jooqDsl;
-    private EntityManager entityManager;
 
     @Setup(Level.Trial)
     public void setup() {
@@ -47,8 +46,6 @@ public class DeleteBenchmark {
         easyEntityQuery = new DefaultEasyEntityQuery(easyQueryClient);
 
         jooqDsl = DSL.using(DatabaseInitializer.getDataSource(), SQLDialect.H2);
-
-        entityManager = HibernateUtil.createEntityManager();
     }
 
     @Setup(Level.Iteration)
@@ -84,26 +81,30 @@ public class DeleteBenchmark {
 
     @Benchmark
     public int hibernateDeleteByCondition() {
-        entityManager.getTransaction().begin();
+        EntityManager entityManager = HibernateUtil.createEntityManager();
         try {
-            Query query = entityManager.createQuery("DELETE FROM HibernateUser u WHERE u.age >= :minAge");
-            query.setParameter("minAge", 40);
-            int result = query.executeUpdate();
-            entityManager.getTransaction().commit();
-            return result;
-        } catch (Exception e) {
-            if (entityManager.getTransaction().isActive()) {
-                entityManager.getTransaction().rollback();
+            entityManager.getTransaction().begin();
+            try {
+                Query query = entityManager.createQuery("DELETE FROM HibernateUser u WHERE u.age >= :minAge");
+                query.setParameter("minAge", 40);
+                int result = query.executeUpdate();
+                entityManager.getTransaction().commit();
+                return result;
+            } catch (Exception e) {
+                if (entityManager.getTransaction().isActive()) {
+                    entityManager.getTransaction().rollback();
+                }
+                throw e;
             }
-            throw e;
+        } finally {
+            if (entityManager != null && entityManager.isOpen()) {
+                entityManager.close();
+            }
         }
     }
 
     @TearDown(Level.Trial)
     public void tearDown() {
-        if (entityManager != null && entityManager.isOpen()) {
-            entityManager.close();
-        }
         DatabaseInitializer.clearData();
     }
 }
