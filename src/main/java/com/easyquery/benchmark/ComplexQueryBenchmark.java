@@ -1,5 +1,6 @@
 package com.easyquery.benchmark;
 
+import com.easy.query.api.proxy.client.EasyEntityQuery;
 import com.easy.query.core.proxy.sql.GroupKeys;
 import com.easyquery.benchmark.entity.Order;
 import com.easyquery.benchmark.entity.User;
@@ -36,7 +37,7 @@ import static com.easyquery.benchmark.jooq.generated.Tables.T_USER;
 public class
 ComplexQueryBenchmark {
 
-    private DefaultEasyEntityQuery easyEntityQuery;
+    private EasyEntityQuery easyEntityQuery;
     private DSLContext jooqDsl;
 
     @Setup(Level.Trial)

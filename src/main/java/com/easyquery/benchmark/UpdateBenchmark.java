@@ -1,7 +1,7 @@
 package com.easyquery.benchmark;
 
+import com.easy.query.api.proxy.client.EasyEntityQuery;
 import com.easyquery.benchmark.entity.User;
-import com.easyquery.benchmark.hibernate.HibernateUser;
 import com.easyquery.benchmark.hibernate.HibernateUtil;
 import com.easy.query.api.proxy.client.DefaultEasyEntityQuery;
 import com.easy.query.core.api.client.EasyQueryClient;
@@ -30,7 +30,7 @@ import static com.easyquery.benchmark.jooq.generated.Tables.T_USER;
 @Threads(1)
 public class UpdateBenchmark {
 
-    private DefaultEasyEntityQuery easyEntityQuery;
+    private EasyEntityQuery easyEntityQuery;
     private DSLContext jooqDsl;
     private String[] testUserIds;
     private int userIdIndex = 0;

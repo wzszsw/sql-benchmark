@@ -1,5 +1,6 @@
 package com.easyquery.benchmark;
 
+import com.easy.query.api.proxy.client.EasyEntityQuery;
 import com.easyquery.benchmark.entity.User;
 import com.easyquery.benchmark.hibernate.HibernateUtil;
 import com.easy.query.api.proxy.client.DefaultEasyEntityQuery;
@@ -29,7 +30,7 @@ import static com.easyquery.benchmark.jooq.generated.Tables.T_USER;
 @Threads(1)
 public class DeleteBenchmark {
 
-    private DefaultEasyEntityQuery easyEntityQuery;
+    private EasyEntityQuery easyEntityQuery;
     private DSLContext jooqDsl;
 
     @Setup(Level.Trial)
