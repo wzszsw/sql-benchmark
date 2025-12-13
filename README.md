@@ -93,13 +93,13 @@ JOOQ         ██                                                  5,296 ± 18
 
 ### ⚠️ Important Notes
 
-- All frameworks run in **autocommit mode** without explicit transaction management for fair comparison
+- **Transaction handling**: Insert/Update/Delete operations use **explicit transaction management** for data integrity; Query operations run without transactions
 - **Test data varies by benchmark**:
-  - Query operations: 1,000 users pre-loaded
-  - Complex queries: 500 users + ~1,750 orders pre-loaded
-  - Update operations: 100 users per iteration
-  - Delete operations: 50 users per iteration
-  - Insert operations: starts from empty database
+  - Query operations: 1,000 users pre-loaded (at Trial level)
+  - Complex queries: 500 users + ~1,750 orders pre-loaded (at Trial level)
+  - Update operations: 100 users pre-loaded (at Trial level)
+  - Delete operations: 50 users per iteration (refreshed each iteration)
+  - Insert operations: starts from empty database (cleared each iteration)
 - Connection pool: HikariCP with 10 max connections, 5 min idle
 - Benchmark stability achieved through:
   - **Warmup**: 10 iterations × 5 seconds
